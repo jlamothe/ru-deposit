@@ -19,6 +19,7 @@
 module Main where
 
 import Control.Exception
+import Control.Monad
 import Data.Char
 import Data.Maybe
 import System.Environment
@@ -35,9 +36,7 @@ main = do
   case contacts of
     [] -> do
       proceed <- yesNo "No contacts found.  Proceed?"
-      if proceed
-        then processTXN contactsPath []
-        else return ()
+      when proceed $ processTXN contactsPath []
     _ -> processTXN contactsPath contacts
 
 getContactsPath :: IO FilePath
@@ -49,11 +48,11 @@ getContactsPath = do
       putStr "Path to contacts: "
       getLine
 
-loadContacts :: String -> IO [Contact]
+loadContacts :: FilePath -> IO [Contact]
 loadContacts path = do
   contents <- try $ readFile path :: IO (Either SomeException String)
   case contents of
-    Right contents -> do
+    Right contents ->
       case parseCSV path contents of
         Right xs -> return $ mapMaybe recordToContact xs
         _        -> do
