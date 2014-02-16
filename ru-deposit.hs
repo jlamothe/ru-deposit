@@ -30,7 +30,6 @@ import Config
 import Types
 
 main = do
-  hSetBuffering stdout NoBuffering
   contactsPath <- getContactsPath
   contacts <- loadContacts contactsPath
   case contacts of
@@ -44,9 +43,7 @@ getContactsPath = do
   args <- getArgs
   case args of
     (x : _) -> return x
-    _       -> do
-      putStr "Path to contacts: "
-      getLine
+    _       -> prompt "Path to contacts: "
 
 loadContacts :: FilePath -> IO [Contact]
 loadContacts path = do
@@ -55,10 +52,10 @@ loadContacts path = do
     Right contents ->
       case parseCSV path contents of
         Right xs -> return $ mapMaybe recordToContact xs
-        _        -> do
+        Left _   -> do
           putStrLn "Error parsing contacts"
           return []
-    _ -> do
+    Left _ -> do
       putStrLn "Error reading contacts"
       return []
 
@@ -67,16 +64,48 @@ recordToContact (addr : name : _) = Just $ Contact addr name
 recordToContact _                 = Nothing
 
 processTXN :: FilePath -> [Contact] -> IO ()
-processTXN = undefined
+processTXN path contacts = do
+  addr <- prompt "Depositor's ripple address: "
+  case findContact addr contacts of
+    Just contact -> do
+      putStrLn $ "User " ++ contactName contact ++ " found."
+      checkCard path contacts contact
+    Nothing -> do
+      putStrLn "User not found."
+      name <- prompt "Contact name: "
+      let contact = Contact addr name
+      checkCard path (contacts ++ [contact]) contact
+
+findContact :: String -> [Contact] -> Maybe Contact
+findContact addr [] = Nothing
+findContact addr (x : xs) =
+  if addr == rippleAddress x
+  then Just x
+  else findContact addr xs
+
+checkCard :: FilePath -> [Contact] -> Contact -> IO ()
+checkCard = undefined
+
+prompt :: String -> IO String
+prompt str = do
+  bufMode <- hGetBuffering stdout
+  hSetBuffering stdout NoBuffering
+  putStr str
+  result <- getLine
+  hSetBuffering stdout bufMode
+  return result
 
 yesNo :: String -> IO Bool
 yesNo prompt = do
-  bufMode <- hGetBuffering stdin
+  inBufMode <- hGetBuffering stdin
+  outBufMode <- hGetBuffering stdout
   hSetBuffering stdin NoBuffering
+  hSetBuffering stdout NoBuffering
   putStr $ prompt ++ " (Y/N): "
   ans <- getChar
   putChar '\n'
-  hSetBuffering stdin bufMode
+  hSetBuffering stdin inBufMode
+  hSetBuffering stdout outBufMode
   case toUpper ans of
     'Y' -> return True
     'N' -> return False
