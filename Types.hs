@@ -16,26 +16,11 @@
 -- along with this program.  If not, see
 -- <http://www.gnu.org/licenses/>.
 
-module Main where
+module Types where
 
-import System.IO
-import Text.CSV
-
-import Config
-import Types
-
-main = do
-  contactsPath <- getContactsPath
-  contacts <- loadContacts contactsPath
-  processTXN contactsPath contacts
-
-getContactsPath :: IO FilePath
-getContactsPath = undefined
-
-loadContacts :: String -> IO [Contact]
-loadContacts = undefined
-
-processTXN :: FilePath -> [Contact] -> IO ()
-processTXN = undefined
+data Contact =
+  Contact { rippleAddress :: String
+          , contactName   :: String
+          } deriving Show
 
 -- jl
