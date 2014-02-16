@@ -18,6 +18,7 @@
 
 module Main where
 
+import System.Environment
 import System.IO
 import Text.CSV
 
@@ -25,12 +26,19 @@ import Config
 import Types
 
 main = do
+  hSetBuffering stdout NoBuffering
   contactsPath <- getContactsPath
   contacts <- loadContacts contactsPath
   processTXN contactsPath contacts
 
 getContactsPath :: IO FilePath
-getContactsPath = undefined
+getContactsPath = do
+  args <- getArgs
+  case args of
+    (x : _) -> return x
+    _       -> do
+      putStr "Path to contacts: "
+      getLine
 
 loadContacts :: String -> IO [Contact]
 loadContacts = undefined
