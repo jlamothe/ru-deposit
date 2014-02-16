@@ -18,6 +18,7 @@
 
 module Main where
 
+import Data.Maybe
 import System.Environment
 import System.IO
 import Text.CSV
@@ -41,7 +42,17 @@ getContactsPath = do
       getLine
 
 loadContacts :: String -> IO [Contact]
-loadContacts = undefined
+loadContacts path = do
+  result <- parseCSVFromFile path
+  case result of
+    Right xs -> return $ mapMaybe recordToContact xs
+    _        -> do
+      putStrLn "Error loading contacts"
+      return []
+
+recordToContact :: Record -> Maybe Contact
+recordToContact (addr : name : _) = Just $ Contact addr name
+recordToContact _                 = Nothing
 
 processTXN :: FilePath -> [Contact] -> IO ()
 processTXN = undefined
