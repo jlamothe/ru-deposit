@@ -18,6 +18,7 @@
 
 module Main where
 
+import Data.Char
 import Data.Maybe
 import System.Environment
 import System.IO
@@ -30,7 +31,13 @@ main = do
   hSetBuffering stdout NoBuffering
   contactsPath <- getContactsPath
   contacts <- loadContacts contactsPath
-  processTXN contactsPath contacts
+  case contacts of
+    [] -> do
+      proceed <- yesNo "No contacts found.  Proceed?"
+      if proceed
+        then processTXN contactsPath []
+        else return ()
+    _ -> processTXN contactsPath contacts
 
 getContactsPath :: IO FilePath
 getContactsPath = do
@@ -56,5 +63,20 @@ recordToContact _                 = Nothing
 
 processTXN :: FilePath -> [Contact] -> IO ()
 processTXN = undefined
+
+yesNo :: String -> IO Bool
+yesNo prompt = do
+  bufMode <- hGetBuffering stdin
+  hSetBuffering stdin NoBuffering
+  putStr $ prompt ++ " (Y/N): "
+  ans <- getChar
+  putChar '\n'
+  hSetBuffering stdin bufMode
+  case toUpper ans of
+    'Y' -> return True
+    'N' -> return False
+    _   -> do
+      putStrLn "Please answer yes or no."
+      yesNo prompt
 
 -- jl
