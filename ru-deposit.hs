@@ -18,6 +18,7 @@
 
 module Main where
 
+import Control.Exception
 import Data.Char
 import Data.Maybe
 import System.Environment
@@ -50,11 +51,16 @@ getContactsPath = do
 
 loadContacts :: String -> IO [Contact]
 loadContacts path = do
-  result <- parseCSVFromFile path
-  case result of
-    Right xs -> return $ mapMaybe recordToContact xs
-    _        -> do
-      putStrLn "Error loading contacts"
+  contents <- try $ readFile path :: IO (Either SomeException String)
+  case contents of
+    Right contents -> do
+      case parseCSV path contents of
+        Right xs -> return $ mapMaybe recordToContact xs
+        _        -> do
+          putStrLn "Error parsing contacts"
+          return []
+    _ -> do
+      putStrLn "Error reading contacts"
       return []
 
 recordToContact :: Record -> Maybe Contact
