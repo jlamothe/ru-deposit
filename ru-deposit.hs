@@ -86,7 +86,7 @@ findContact addr (x : xs) =
 
 checkCard :: FilePath -> [Contact] -> Contact -> IO ()
 checkCard path contacts contact = do
-  val <- promptNum "What is the value of the card? (0 for bad card) "
+  val <- promptNum $ "What is the value of the card in " ++ currency ++ "? (0 for bad card) "
   if val < txnFee
     then do
     putStrLn "This deposit is too small."
