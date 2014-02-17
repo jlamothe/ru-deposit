@@ -62,9 +62,21 @@ loadContacts path = do
       putStrLn "Error reading contacts"
       return []
 
+saveContacts :: State -> IO Bool
+saveContacts state = do
+  let csv = map contactToRecord $ contacts state
+  result <- try $ writeFile (contactsPath state) $ printCSV csv :: IO (Either SomeException ())
+  case result of
+    Right () -> return True
+    Left _   -> return False
+
 recordToContact :: Record -> Maybe Contact
 recordToContact (addr : name : _) = Just $ Contact addr name
 recordToContact _                 = Nothing
+
+contactToRecord :: Contact -> Record
+contactToRecord contact =
+  [rippleAddress contact, contactName contact]
 
 processTxn :: State -> IO ()
 processTxn state = do
@@ -82,8 +94,15 @@ processTxn state = do
       name <- prompt "Contact name: "
       proceed <- yesNo $ "Add user " ++ name ++ " with address " ++ addr ++ " to contacts?"
       if proceed
-        then let contact = Contact addr name in
-        checkCard state { contacts = contacts state ++ [contact] } contact
+        then do
+        let contact = Contact addr name
+        let state' = state { contacts = contacts state ++ [contact] }
+        didSave <- saveContacts state'
+        if didSave
+          then checkCard state' contact
+          else do
+          putStrLn "Contact could not be saved."
+          restart state
         else restart state
 
 findContact :: String -> [Contact] -> Maybe Contact
