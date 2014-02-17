@@ -19,11 +19,13 @@
 module Config where
 
 ourAddress = "r3ADD8kXSUKHd6zTCKfnKT3zV9EZHjzp1S"
+ourName = "Ripple Union"
 pendingAddress = "rhVQx9zoHR418Yecjhdts8LmMbQ8hCnhig"
+pendingName = "PENDING"
 xrpFloor = 35 :: Double
 txnFee = 2 :: Double
 limit = 10 :: Double
-overlimitFee = 10 :: Double
+overlimitFee = 0.1 :: Double
 currency = "CAD"
 
 -- jl

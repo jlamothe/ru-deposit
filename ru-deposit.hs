@@ -94,12 +94,35 @@ checkCard path contacts contact = do
     else txnIn path contacts contact val
 
 txnIn :: FilePath -> [Contact] -> Contact -> Double -> IO ()
-txnIn = undefined
+txnIn path contacts contact amt = do
+  sendTo ourAddress (Just ourName) currency amt
+  pause
+  graph $ rippleAddress contact
+  xrp <- promptNum "How much XRP do they have? "
+  when (xrp < xrpFloor) $ do
+    sendTo (rippleAddress contact) Nothing "XRP" (xrpFloor - xrp)
+    pause
+  if amt > limit
+    then do
+    waive <- yesNo "This transaction will incur an overlimit fee.  Waive it?"
+    txnOut path contacts contact $ if waive
+                                   then amt - txnFee
+                                   else amt * (1 - overlimitFee) - txnFee
+    else txnOut path contacts contact $ amt - txnFee
+
+txnOut :: FilePath -> [Contact] -> Contact -> Double -> IO ()
+txnOut = undefined
 
 restart :: FilePath -> [Contact] -> IO ()
 restart path contacts = do
   again <- yesNo "Process another transaction?"
   when again $ processTxn path contacts
+
+graph :: String -> IO ()
+graph = undefined
+
+sendTo :: String -> Maybe String -> String -> Double -> IO ()
+sendTo = undefined
 
 prompt :: String -> IO String
 prompt str = do
@@ -140,5 +163,19 @@ yesNo prompt = do
     _   -> do
       putStrLn "Please answer yes or no."
       yesNo prompt
+
+pause :: IO ()
+pause = do
+  inBufMode <- hGetBuffering stdin
+  outBufMode <- hGetBuffering stdout
+  echoMode <- hGetEcho stdin
+  hSetBuffering stdin NoBuffering
+  hSetBuffering stdout NoBuffering
+  hSetEcho stdin False
+  putStr "Press any key to continue..."
+  getChar
+  hSetBuffering stdin inBufMode
+  hSetBuffering stdout outBufMode
+  hSetEcho stdin echoMode
 
 -- jl
