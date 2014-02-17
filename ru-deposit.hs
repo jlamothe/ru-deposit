@@ -76,8 +76,11 @@ processTxn state = do
     Nothing -> do
       putStrLn "User not found."
       name <- prompt "Contact name: "
-      let contact = Contact addr name
-      checkCard state { contacts = contacts state ++ [contact] } contact
+      proceed <- yesNo $ "Add user " ++ name ++ " with address " ++ addr ++ " to contacts?"
+      if proceed
+        then let contact = Contact addr name in
+        checkCard state { contacts = contacts state ++ [contact] } contact
+        else restart state
 
 findContact :: String -> [Contact] -> Maybe Contact
 findContact addr [] = Nothing
