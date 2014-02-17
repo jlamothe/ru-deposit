@@ -22,6 +22,7 @@ import Control.Exception
 import Control.Monad
 import Data.Char
 import Data.Maybe
+import Safe
 import System.Environment
 import System.IO
 import Text.CSV
@@ -35,8 +36,8 @@ main = do
   case contacts of
     [] -> do
       proceed <- yesNo "No contacts found.  Proceed?"
-      when proceed $ processTXN contactsPath []
-    _ -> processTXN contactsPath contacts
+      when proceed $ processTxn contactsPath []
+    _ -> processTxn contactsPath contacts
 
 getContactsPath :: IO FilePath
 getContactsPath = do
@@ -63,8 +64,8 @@ recordToContact :: Record -> Maybe Contact
 recordToContact (addr : name : _) = Just $ Contact addr name
 recordToContact _                 = Nothing
 
-processTXN :: FilePath -> [Contact] -> IO ()
-processTXN path contacts = do
+processTxn :: FilePath -> [Contact] -> IO ()
+processTxn path contacts = do
   addr <- prompt "Depositor's ripple address: "
   case findContact addr contacts of
     Just contact -> do
@@ -84,7 +85,21 @@ findContact addr (x : xs) =
   else findContact addr xs
 
 checkCard :: FilePath -> [Contact] -> Contact -> IO ()
-checkCard = undefined
+checkCard path contacts contact = do
+  val <- promptNum "What is the value of the card? (0 for bad card) "
+  if val < txnFee
+    then do
+    putStrLn "This deposit is too small."
+    restart path contacts
+    else txnIn path contacts contact val
+
+txnIn :: FilePath -> [Contact] -> Contact -> Double -> IO ()
+txnIn = undefined
+
+restart :: FilePath -> [Contact] -> IO ()
+restart path contacts = do
+  again <- yesNo "Process another transaction?"
+  when again $ processTxn path contacts
 
 prompt :: String -> IO String
 prompt str = do
@@ -94,6 +109,19 @@ prompt str = do
   result <- getLine
   hSetBuffering stdout bufMode
   return result
+
+promptNum :: String -> IO Double
+promptNum prompt = do
+  bufMode <- hGetBuffering stdout
+  hSetBuffering stdout NoBuffering
+  putStr prompt
+  str <- getLine
+  hSetBuffering stdout bufMode
+  case (readMay str :: Maybe Double)  of
+    Just x  -> return x
+    Nothing -> do
+      putStrLn "That is not a valid number."
+      promptNum prompt
 
 yesNo :: String -> IO Bool
 yesNo prompt = do

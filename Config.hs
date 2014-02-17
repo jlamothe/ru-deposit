@@ -20,10 +20,10 @@ module Config where
 
 ourAddress = "r3ADD8kXSUKHd6zTCKfnKT3zV9EZHjzp1S"
 pendingAddress = "rhVQx9zoHR418Yecjhdts8LmMbQ8hCnhig"
-xrpFloor = 35
-txnFee = 2
-limit = 10
-overlimitFee = 10
+xrpFloor = 35 :: Double
+txnFee = 2 :: Double
+limit = 10 :: Double
+overlimitFee = 10 :: Double
 currency = "CAD"
 
 -- jl
