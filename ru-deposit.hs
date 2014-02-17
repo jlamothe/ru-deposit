@@ -139,7 +139,17 @@ txnIn state contact amt = do
     else txnOut state contact $ amt - txnFee
 
 txnOut :: State -> Contact -> Double -> IO ()
-txnOut = undefined
+txnOut state contact amt = do
+  sendTo (rippleAddress contact) Nothing currency amt
+  success <- yesNo "Was there sufficient liquidity?"
+  if success
+    then restart state
+    else do
+    sendTo pendingAddress (Just pendingName) currency amt
+    pause
+    putStrLn "Add the following card to Trello:"
+    putStrLn $ "Send " ++ show amt ++ " " ++ currency ++ " to " ++ contactName contact ++ " " ++ rippleAddress contact
+    restart state
 
 restart :: State -> IO ()
 restart state = do
