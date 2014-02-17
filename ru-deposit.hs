@@ -33,12 +33,13 @@ import Types
 
 main = do
   contactsPath <- getContactsPath
-  contacts <- loadContacts contactsPath
+  contacts     <- loadContacts contactsPath
+  let state = State contactsPath contacts
   case contacts of
     [] -> do
       proceed <- yesNo "No contacts found.  Proceed?"
-      when proceed $ processTxn contactsPath []
-    _ -> processTxn contactsPath contacts
+      when proceed $ processTxn state
+    _ -> processTxn state
 
 getContactsPath :: IO FilePath
 getContactsPath = do
@@ -65,18 +66,18 @@ recordToContact :: Record -> Maybe Contact
 recordToContact (addr : name : _) = Just $ Contact addr name
 recordToContact _                 = Nothing
 
-processTxn :: FilePath -> [Contact] -> IO ()
-processTxn path contacts = do
+processTxn :: State -> IO ()
+processTxn state = do
   addr <- prompt "Depositor's ripple address: "
-  case findContact addr contacts of
+  case findContact addr (contacts state) of 
     Just contact -> do
       putStrLn $ "User " ++ contactName contact ++ " found."
-      checkCard path contacts contact
+      checkCard state contact
     Nothing -> do
       putStrLn "User not found."
       name <- prompt "Contact name: "
       let contact = Contact addr name
-      checkCard path (contacts ++ [contact]) contact
+      checkCard state { contacts = contacts state ++ [contact] } contact
 
 findContact :: String -> [Contact] -> Maybe Contact
 findContact addr [] = Nothing
@@ -85,17 +86,17 @@ findContact addr (x : xs) =
   then Just x
   else findContact addr xs
 
-checkCard :: FilePath -> [Contact] -> Contact -> IO ()
-checkCard path contacts contact = do
+checkCard :: State -> Contact -> IO ()
+checkCard state contact = do
   val <- promptNum $ "What is the value of the card in " ++ currency ++ "? (0 for bad card) "
   if val < txnFee
     then do
     putStrLn "This deposit is too small."
-    restart path contacts
-    else txnIn path contacts contact val
+    restart state
+    else txnIn state contact val
 
-txnIn :: FilePath -> [Contact] -> Contact -> Double -> IO ()
-txnIn path contacts contact amt = do
+txnIn :: State -> Contact -> Double -> IO ()
+txnIn state contact amt = do
   sendTo ourAddress (Just ourName) currency amt
   pause
   graph $ rippleAddress contact
@@ -106,18 +107,18 @@ txnIn path contacts contact amt = do
   if amt > limit
     then do
     waive <- yesNo "This transaction will incur an overlimit fee.  Waive it?"
-    txnOut path contacts contact $ if waive
-                                   then amt - txnFee
-                                   else amt * (1 - overlimitFee) - txnFee
-    else txnOut path contacts contact $ amt - txnFee
+    txnOut state contact $ if waive
+                           then amt - txnFee
+                           else amt * (1 - overlimitFee) - txnFee
+    else txnOut state contact $ amt - txnFee
 
-txnOut :: FilePath -> [Contact] -> Contact -> Double -> IO ()
+txnOut :: State -> Contact -> Double -> IO ()
 txnOut = undefined
 
-restart :: FilePath -> [Contact] -> IO ()
-restart path contacts = do
+restart :: State -> IO ()
+restart state = do
   again <- yesNo "Process another transaction?"
-  when again $ processTxn path contacts
+  when again $ processTxn state
 
 graph :: String -> IO ()
 graph addr = putStrLn $ "https://ripple.com/graph/#" ++ addr
@@ -136,20 +137,18 @@ sendTo addr name currency amt = do
 
 prompt :: String -> IO String
 prompt str = do
-  bufMode <- hGetBuffering stdout
-  hSetBuffering stdout NoBuffering
+  cachedMode <- pushControlMode LineBuffering NoBuffering True
   putStr str
   result <- getLine
-  hSetBuffering stdout bufMode
+  restoreControlMode cachedMode
   return result
 
 promptNum :: String -> IO Double
 promptNum prompt = do
-  bufMode <- hGetBuffering stdout
-  hSetBuffering stdout NoBuffering
+  cachedMode <- pushControlMode LineBuffering NoBuffering True
   putStr prompt
   str <- getLine
-  hSetBuffering stdout bufMode
+  restoreControlMode cachedMode
   case (readMay str :: Maybe Double)  of
     Just x  -> return x
     Nothing -> do
@@ -158,15 +157,11 @@ promptNum prompt = do
 
 yesNo :: String -> IO Bool
 yesNo prompt = do
-  inBufMode <- hGetBuffering stdin
-  outBufMode <- hGetBuffering stdout
-  hSetBuffering stdin NoBuffering
-  hSetBuffering stdout NoBuffering
+  cachedMode <- pushControlMode NoBuffering NoBuffering True
   putStr $ prompt ++ " (Y/N): "
   ans <- getChar
   putChar '\n'
-  hSetBuffering stdin inBufMode
-  hSetBuffering stdout outBufMode
+  restoreControlMode cachedMode
   case toUpper ans of
     'Y' -> return True
     'N' -> return False
@@ -176,17 +171,26 @@ yesNo prompt = do
 
 pause :: IO ()
 pause = do
-  inBufMode <- hGetBuffering stdin
-  outBufMode <- hGetBuffering stdout
-  echoMode <- hGetEcho stdin
-  hSetBuffering stdin NoBuffering
-  hSetBuffering stdout NoBuffering
-  hSetEcho stdin False
+  cachedMode <- pushControlMode NoBuffering NoBuffering False
   putStr "Press any key to continue..."
   getChar
   putChar '\n'
-  hSetBuffering stdin inBufMode
-  hSetBuffering stdout outBufMode
-  hSetEcho stdin echoMode
+  restoreControlMode cachedMode
+
+pushControlMode :: BufferMode -> BufferMode -> Bool -> IO ControlMode
+pushControlMode newInBufMode newOutBufMode newEchoMode = do
+  inBufMode  <- hGetBuffering stdin
+  outBufMode <- hGetBuffering stdout
+  echoMode   <- hGetEcho      stdin
+  hSetBuffering stdin  newInBufMode
+  hSetBuffering stdout newOutBufMode
+  hSetEcho      stdin  newEchoMode
+  return $ ControlMode inBufMode outBufMode echoMode
+
+restoreControlMode :: ControlMode -> IO ()
+restoreControlMode controlMode = do
+  hSetBuffering stdin  $ inBufMode  controlMode
+  hSetBuffering stdout $ outBufMode controlMode
+  hSetEcho      stdin  $ echoMode   controlMode
 
 -- jl

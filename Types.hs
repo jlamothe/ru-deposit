@@ -18,6 +18,19 @@
 
 module Types where
 
+import System.IO
+
+data State =
+  State { contactsPath :: FilePath
+        , contacts     :: [Contact]
+        } deriving Show
+
+data ControlMode =
+  ControlMode { inBufMode  :: BufferMode
+              , outBufMode :: BufferMode
+              , echoMode   :: Bool
+              } deriving Show
+
 data Contact =
   Contact { rippleAddress :: String
           , contactName   :: String
