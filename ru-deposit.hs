@@ -22,6 +22,7 @@ import Control.Exception
 import Control.Monad
 import Data.Char
 import Data.Maybe
+import qualified Network.HTTP.Base as HTTP
 import Safe
 import System.Environment
 import System.IO
@@ -127,7 +128,7 @@ sendTo addr name currency amt = do
   let suffix = "&amount=" ++ show amt ++ "/" ++ currency
   case name of
     Just x -> do
-      putStrLn $ prefix ++ "&name=" ++ x ++ suffix
+      putStrLn $ prefix ++ "&name=" ++ HTTP.urlEncode x ++ suffix
       putStrLn $ "Send " ++ show amt ++ " " ++ currency ++ " to " ++ x
     Nothing -> do
       putStrLn $ prefix ++ suffix
