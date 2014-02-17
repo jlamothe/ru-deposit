@@ -119,10 +119,19 @@ restart path contacts = do
   when again $ processTxn path contacts
 
 graph :: String -> IO ()
-graph = undefined
+graph addr = putStrLn $ "https://ripple.com/graph/#" ++ addr
 
 sendTo :: String -> Maybe String -> String -> Double -> IO ()
-sendTo = undefined
+sendTo addr name currency amt = do
+  let prefix = "https://ripple.com//send?to=" ++ addr
+  let suffix = "&amount=" ++ show amt ++ "/" ++ currency
+  case name of
+    Just x -> do
+      putStrLn $ prefix ++ "&name=" ++ x ++ suffix
+      putStrLn $ "Send " ++ show amt ++ " " ++ currency ++ " to " ++ x
+    Nothing -> do
+      putStrLn $ prefix ++ suffix
+      putStrLn $ "Send " ++ show amt ++ " " ++ currency ++ " to " ++ addr
 
 prompt :: String -> IO String
 prompt str = do
@@ -174,6 +183,7 @@ pause = do
   hSetEcho stdin False
   putStr "Press any key to continue..."
   getChar
+  putChar '\n'
   hSetBuffering stdin inBufMode
   hSetBuffering stdout outBufMode
   hSetEcho stdin echoMode
