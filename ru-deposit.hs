@@ -72,7 +72,11 @@ processTxn state = do
   case findContact addr (contacts state) of 
     Just contact -> do
       putStrLn $ "User " ++ contactName contact ++ " found."
-      checkCard state contact
+      graph addr
+      cooldown <- yesNo "Has it been long enough since their last deposit?"
+      if cooldown
+        then checkCard state contact
+        else restart state
     Nothing -> do
       putStrLn "User not found."
       name <- prompt "Contact name: "
