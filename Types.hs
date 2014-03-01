@@ -23,6 +23,8 @@ import System.IO
 data State =
   State { contactsPath :: FilePath
         , contacts     :: [Contact]
+        , valIn        :: Double
+        , valOut       :: Double
         } deriving Show
 
 data ControlMode =

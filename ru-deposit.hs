@@ -34,7 +34,7 @@ import Types
 main = do
   contactsPath <- getContactsPath
   contacts     <- loadContacts contactsPath
-  let state = State contactsPath contacts
+  let state = State contactsPath contacts 0 0
   case contacts of
     [] -> do
       proceed <- yesNo "No contacts found.  Proceed?"
@@ -119,7 +119,8 @@ checkCard state contact = do
     then do
     putStrLn "This deposit is too small."
     restart state
-    else txnIn state contact val
+    else let state' = state { valIn = valIn state + val } in
+    txnIn state' contact val
 
 txnIn :: State -> Contact -> Double -> IO ()
 txnIn state contact amt = do
@@ -133,10 +134,13 @@ txnIn state contact amt = do
   if amt > limit
     then do
     waive <- yesNo "This transaction will incur an overlimit fee.  Waive it?"
-    txnOut state contact $ if waive
-                           then amt - txnFee
-                           else amt * (1 - overlimitFee) - txnFee
-    else txnOut state contact $ amt - txnFee
+    let amt' = if waive then amt - txnFee else amt * (1 - overlimitFee) - txnFee
+    let state' = state { valOut = valOut state + amt' }
+    txnOut state' contact amt'
+    else do
+    let amt' = amt - txnFee
+    let state' = state { valOut = valOut state + amt' }
+    txnOut state' contact amt'
 
 txnOut :: State -> Contact -> Double -> IO ()
 txnOut state contact amt = do
@@ -154,7 +158,19 @@ txnOut state contact amt = do
 restart :: State -> IO ()
 restart state = do
   again <- yesNo "Process another transaction?"
-  when again $ processTxn state
+  if again 
+    then processTxn state
+    else finalReport state
+
+finalReport :: State -> IO ()
+finalReport state = do
+  putStrLn ""
+  putStrLn "*** FINAL REPORT ***"
+  putStrLn ""
+  putStrLn $ "     Amount in: " ++ show (valIn state)
+  putStrLn $ "    Amount out: " ++ show (valOut state)
+  putStrLn $ "Fees collected: " ++ show (valIn state - valOut state)
+  putStrLn ""
 
 graph :: String -> IO ()
 graph addr = putStrLn $ "https://ripple.com/graph/#" ++ addr
