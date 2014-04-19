@@ -25,6 +25,7 @@ data State =
         , contacts     :: [Contact]
         , valIn        :: Double
         , valOut       :: Double
+        , valHeld      :: Double
         } deriving Show
 
 data ControlMode =

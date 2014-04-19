@@ -34,7 +34,7 @@ import Types
 main = do
   contactsPath <- getContactsPath
   contacts     <- loadContacts contactsPath
-  let state = State contactsPath contacts 0 0
+  let state = State contactsPath contacts 0 0 0
   case contacts of
     [] -> do
       proceed <- yesNo "No contacts found.  Proceed?"
@@ -117,15 +117,12 @@ checkCard state contact = do
   val <- promptNum $ "What is the value of the card in " ++ currency ++ "? (0 for bad card) "
   if val < txnFee
     then do
-    putStrLn "This deposit is too small."
-    restart state
-    else let state' = state { valIn = valIn state + val } in
-    txnIn state' contact val
+      putStrLn "This deposit is too small."
+      restart state
+    else startTxn state { valIn = valIn state + val } contact val
 
-txnIn :: State -> Contact -> Double -> IO ()
-txnIn state contact amt = do
-  sendTo ourAddress (Just ourName) currency amt
-  pause
+startTxn :: State -> Contact -> Double -> IO ()
+startTxn state contact amt = do
   graph $ rippleAddress contact
   xrp <- promptNum "How much XRP do they have? "
   when (xrp < xrpFloor) $ do
@@ -133,42 +130,43 @@ txnIn state contact amt = do
     pause
   if amt > limit
     then do
-    waive <- yesNo "This transaction will incur an overlimit fee.  Waive it?"
-    let amt' = if waive then amt - txnFee else amt * (1 - overlimitFee) - txnFee
-    let state' = state { valOut = valOut state + amt' }
-    txnOut state' contact amt'
-    else do
-    let amt' = amt - txnFee
-    let state' = state { valOut = valOut state + amt' }
-    txnOut state' contact amt'
+      waive <- yesNo "This transaction will incur an overlimit fee.  Waive it?"
+      let amt' = if waive then amt - txnFee else amt * (1 - overlimitFee) - txnFee
+      txnOut state contact amt'
+    else txnOut state contact $ amt - txnFee
 
 txnOut :: State -> Contact -> Double -> IO ()
 txnOut state contact amt = do
   sendTo (rippleAddress contact) Nothing currency amt
   success <- yesNo "Was there sufficient liquidity?"
   if success
-    then restart state
+    then restart state { valOut = valOut state + amt }
     else do
-    sendTo pendingAddress (Just pendingName) currency amt
-    pause
-    putStrLn "Add the following card to Trello:"
-    putStrLn $ "Send " ++ show amt ++ " " ++ currency ++ " to " ++ contactName contact ++ " " ++ rippleAddress contact
-    restart state
+      putStrLn "Add the following card to Trello:"
+      putStrLn $ "Send " ++ show amt ++ " " ++ currency ++ " to " ++ contactName contact ++ " " ++ rippleAddress contact
+      restart state { valHeld = valHeld state + amt }
 
 restart :: State -> IO ()
 restart state = do
   again <- yesNo "Process another transaction?"
   if again 
     then processTxn state
-    else finalReport state
+    else finalize state
 
-finalReport :: State -> IO ()
-finalReport state = do
+finalize :: State -> IO ()
+finalize state = do
+  when (valIn state > 0) $ do
+    sendTo ourAddress (Just ourName) currency $ valIn state
+    pause
+  when (valHeld state > 0) $ do
+    sendTo pendingAddress (Just pendingName) currency $ valHeld state
+    pause
   putStrLn ""
   putStrLn "*** FINAL REPORT ***"
   putStrLn ""
   putStrLn $ "     Amount in: " ++ show (valIn state)
   putStrLn $ "    Amount out: " ++ show (valOut state)
+  putStrLn $ "   Amount held: " ++ show (valHeld state)
   putStrLn $ "Fees collected: " ++ show (valIn state - valOut state)
   putStrLn ""
 
