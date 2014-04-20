@@ -167,7 +167,7 @@ finalize state = do
   putStrLn $ "     Amount in: " ++ show (valIn state)
   putStrLn $ "    Amount out: " ++ show (valOut state)
   putStrLn $ "   Amount held: " ++ show (valHeld state)
-  putStrLn $ "Fees collected: " ++ show (valIn state - valOut state)
+  putStrLn $ "Fees collected: " ++ show (valIn state - valOut state - valHeld state)
   putStrLn ""
 
 graph :: String -> IO ()

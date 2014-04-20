@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                ru-deposit
-version:             0.3
+version:             0.3.1
 synopsis:            Ripple Union Amazon Gift Card Deposit Workflow
 -- description:         
 homepage:            https://github.com/jlamothe/ru-deposit
