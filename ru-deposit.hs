@@ -171,7 +171,7 @@ finalize state = do
   putStrLn ""
 
 graph :: String -> IO ()
-graph addr = putStrLn $ "https://ripple.com/graph/#" ++ addr
+graph addr = putStrLn $ "http://ripplecharts.com/#/graph/" ++ addr
 
 sendTo :: String -> Maybe String -> String -> Double -> IO ()
 sendTo addr name currency amt = do
